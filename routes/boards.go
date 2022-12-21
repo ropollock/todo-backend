@@ -1,20 +1,49 @@
 package routes
 
 import (
+	"fmt"
 	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
-	"time"
 )
 
-type Board struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
-	Name       string             `bson:"name,omitempty"`
-	CreatedTS  time.Time          `bson:"created_ts,omitempty"`
-	ModifiedTS time.Time          `bson:"modified_ts,omitempty"`
-	OwnerID    primitive.ObjectID `bson:"owner_id,omitempty"`
+type BoardRequest struct {
+	ID      string `param:"id" query:"id"`
+	Name    string `json:"name"`
+	OwnerID string `json:"owner_id"`
 }
 
-func Boards(ctx echo.Context) error {
+func RegisterBoardsRoutes(e *echo.Echo) {
+	e.GET("/boards", GetBoards)
+	e.GET("/boards/:id", FindBoardsById)
+	e.POST("/boards", CreateBoard)
+	e.PUT("/boards/:id", UpdateBoard)
+	e.DELETE("/boards/:id", DeleteBoard)
+	fmt.Println("Registered /boards routes.")
+}
+
+func GetBoards(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "GET, Boards!")
+}
+
+func FindBoardsById(ctx echo.Context) error {
+	var req BoardRequest
+
+	err := ctx.Bind(&req)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, "bad request")
+	}
+
+	return ctx.String(http.StatusOK, "FIND, Board!")
+}
+
+func CreateBoard(ctx echo.Context) error {
+	return ctx.String(http.StatusOK, "CREATE, Board!")
+}
+
+func UpdateBoard(ctx echo.Context) error {
+	return ctx.String(http.StatusOK, "UPDATE, Board!")
+}
+
+func DeleteBoard(ctx echo.Context) error {
+	return ctx.String(http.StatusNoContent, "DELETE, Board!")
 }

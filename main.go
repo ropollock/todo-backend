@@ -1,24 +1,20 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/ziflex/lecho/v3"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"net/http"
 	"os"
 	"todo/config"
+	"todo/db"
 	"todo/routes"
 )
 
 var (
-	ctx         context.Context
-	mongoclient *mongo.Client
+	SERVER *echo.Echo
 )
 
 func init() {
@@ -26,27 +22,16 @@ func init() {
 
 	conf, err := config.LoadConfig(".")
 	if err != nil {
-		log.Fatal("Could not load environment variables", err)
+		log.Fatal("Could not load environment variables config.", err)
 	}
 
-	ctx = context.TODO()
-	mongoconn := options.Client().ApplyURI(conf.DBUri)
-	mongoclient, err := mongo.Connect(ctx, mongoconn)
-
-	if err != nil {
-		panic(err)
-	}
-
-	if err := mongoclient.Ping(ctx, readpref.Primary()); err != nil {
-		panic(err)
-	}
-
-	fmt.Println("MongoDB successfully connected.")
+	db.Connect(conf.DBUri)
 }
 
 // go run main.go
 func main() {
 	e := echo.New()
+	SERVER = e
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowCredentials: true,
 	}))
@@ -65,10 +50,12 @@ func main() {
 		Logger: logger,
 	}))
 	e.Use(middleware.Recover())
+	e.Use(middleware.Gzip())
 
 	// Routes
 	e.GET("/api/healthcheck", healthcheck)
-	e.GET("/boards", routes.Boards)
+	routes.RegisterBoardsRoutes(e)
+	routes.RegisterUserRoutes(e)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))
