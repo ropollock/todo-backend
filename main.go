@@ -48,6 +48,7 @@ func main() {
 	}))
 	e.Use(middleware.Recover())
 	e.Use(middleware.Gzip())
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
 
 	// Routes
 	e.GET("/api/healthcheck", healthcheck)

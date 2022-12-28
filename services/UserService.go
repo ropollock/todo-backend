@@ -7,19 +7,33 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"log"
+	"regexp"
 	"time"
 	"todo/db"
+	"unicode"
+)
+
+const (
+	USERNAME_REGEX_STRING = "^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$"
+)
+
+var (
+	USERNAME_REGEX *regexp.Regexp
 )
 
 type User struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 	Name        string             `bson:"name,omitempty" json:"name,omitempty"`
 	Username    string             `bson:"username,omitempty" json:"username,omitempty"`
-	Password    string             `bson:"password,omitempty" json:"password,omitempty"`
+	Password    string             `bson:"password,omitempty" json:"-"`
 	Email       string             `bson:"email,omitempty" json:"email,omitempty"`
 	CreatedTS   time.Time          `bson:"created_ts,omitempty" json:"created_ts"`
 	LastLoginTS time.Time          `bson:"last_login_ts,omitempty" json:"last_login_ts"`
-	IsAdmin     bool               `bson:"is_admin,omitempty" json:"is_admin,omitempty"`
+	IsAdmin     bool               `bson:"is_admin" json:"is_admin,omitempty"`
+}
+
+func init() {
+	USERNAME_REGEX, _ = regexp.Compile(USERNAME_REGEX_STRING)
 }
 
 func CreateUser(user *User) (*mongo.InsertOneResult, error) {
@@ -76,4 +90,39 @@ func GetUsers() ([]User, error) {
 	}
 
 	return results, nil
+}
+
+func ValidatePassword(s string) bool {
+	if len(s) < 8 {
+		return false
+	}
+
+	var hasNumber, hasUpperCase, hasLowercase, hasSpecial bool
+	for _, c := range s {
+		switch {
+		case unicode.IsNumber(c):
+			hasNumber = true
+		case unicode.IsUpper(c):
+			hasUpperCase = true
+		case unicode.IsLower(c):
+			hasLowercase = true
+		case c == '#' || c == '|':
+			return false
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			hasSpecial = true
+		}
+	}
+	return hasNumber && hasUpperCase && hasLowercase && hasSpecial
+}
+
+func ValidateUsername(s string) bool {
+	var firstLetter = []rune(s)
+	if (len(s) > 40 || len(s) < 4) || !USERNAME_REGEX.MatchString(s) || !unicode.IsLetter(firstLetter[0]) {
+		return false
+	}
+	return true
+}
+
+func ScrubUserForAPI(u *User) {
+	u.Password = ""
 }

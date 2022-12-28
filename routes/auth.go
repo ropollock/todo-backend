@@ -82,7 +82,7 @@ func TokenRefresherMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 				if tkn != nil && tkn.Valid {
 					var _, _, _ = auth.GenerateTokensAndSetCookies(&services.User{
-						Name: claims.Name,
+						Username: claims.Username,
 					}, c)
 				}
 			}

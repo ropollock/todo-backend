@@ -15,7 +15,7 @@ const (
 )
 
 type Claims struct {
-	Name string `json:"name"`
+	Username string `json:"name"`
 	jwt.StandardClaims
 }
 
@@ -43,7 +43,7 @@ func generateAccessToken(user *services.User) (string, time.Time, error) {
 
 func generateToken(user *services.User, expirationTime time.Time, secret []byte) (string, time.Time, error) {
 	claims := &Claims{
-		Name: user.Name,
+		Username: user.Username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 		},
@@ -101,4 +101,16 @@ func setUserCookie(user *services.User, expiration time.Time, c echo.Context) {
 	cookie.Expires = expiration
 	cookie.Path = "/"
 	c.SetCookie(cookie)
+}
+
+func GetCurrentUser(ctx echo.Context) (services.User, error) {
+	user := ctx.Get("user").(*jwt.Token)
+	claims := user.Claims.(*Claims)
+
+	userResult, err := services.FindUserByUsername(claims.Username)
+	if err != nil {
+		return services.User{}, err
+	}
+	
+	return userResult, nil
 }
