@@ -12,13 +12,14 @@ import (
 )
 
 type User struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	Name        string             `bson:"name,omitempty"`
-	Username    string             `bson:"username,omitempty"`
-	Password    string             `bson:"password,omitempty"`
-	CreatedTS   time.Time          `bson:"created_ts,omitempty"`
-	LastLoginTS time.Time          `bson:"last_login_ts,omitempty"`
-	IsAdmin     bool               `bson:"is_admin,omitempty"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	Name        string             `bson:"name,omitempty" json:"name,omitempty"`
+	Username    string             `bson:"username,omitempty" json:"username,omitempty"`
+	Password    string             `bson:"password,omitempty" json:"password,omitempty"`
+	Email       string             `bson:"email,omitempty" json:"email,omitempty"`
+	CreatedTS   time.Time          `bson:"created_ts,omitempty" json:"created_ts"`
+	LastLoginTS time.Time          `bson:"last_login_ts,omitempty" json:"last_login_ts"`
+	IsAdmin     bool               `bson:"is_admin,omitempty" json:"is_admin,omitempty"`
 }
 
 func CreateUser(user *User) (*mongo.InsertOneResult, error) {
@@ -41,6 +42,17 @@ func FindUserById(id string) (User, error) {
 	result := db.UsersCollection.FindOne(context.Background(), bson.M{"_id": objectId})
 	resultUser := User{}
 	err = result.Decode(&resultUser)
+	if err != nil {
+		fmt.Println(err)
+		return resultUser, fmt.Errorf("an error occurred while decoding record : %v", err)
+	}
+	return resultUser, nil
+}
+
+func FindUserByUsername(username string) (User, error) {
+	result := db.UsersCollection.FindOne(context.Background(), bson.M{"username": username})
+	resultUser := User{}
+	err := result.Decode(&resultUser)
 	if err != nil {
 		fmt.Println(err)
 		return resultUser, fmt.Errorf("an error occurred while decoding record : %v", err)

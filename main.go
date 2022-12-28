@@ -13,10 +13,6 @@ import (
 	"todo/routes"
 )
 
-var (
-	SERVER *echo.Echo
-)
-
 func init() {
 	fmt.Println("Loading config.")
 
@@ -24,6 +20,7 @@ func init() {
 	if err != nil {
 		log.Fatal("Could not load environment variables config.", err)
 	}
+	config.AppConfig = &conf
 
 	db.Connect(conf.DBUri)
 }
@@ -31,7 +28,6 @@ func init() {
 // go run main.go
 func main() {
 	e := echo.New()
-	SERVER = e
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowCredentials: true,
 	}))
@@ -56,6 +52,22 @@ func main() {
 	e.GET("/api/healthcheck", healthcheck)
 	routes.RegisterBoardsRoutes(e)
 	routes.RegisterUserRoutes(e)
+	routes.RegisterLoginRoutes(e)
+
+	e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
+		Claims:                  &routes.Claims{},
+		SigningKey:              []byte(routes.GetJWTSecret()),
+		TokenLookup:             "cookie:access-token,header:Authorization",
+		ErrorHandlerWithContext: routes.JWTErrorChecker,
+		Skipper: func(c echo.Context) bool {
+			if c.Request().URL.Path == "/login" {
+				return true
+			}
+			return false
+		},
+	}))
+
+	e.Use(routes.TokenRefresherMiddleware)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))
