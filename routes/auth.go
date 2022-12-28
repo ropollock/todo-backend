@@ -6,19 +6,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"time"
-	"todo/config"
 	"todo/services"
+	"todo/services/auth"
 )
-
-const (
-	accessTokenCookieName  = "access-token"
-	refreshTokenCookieName = "refresh-token"
-)
-
-type Claims struct {
-	Name string `json:"name"`
-	jwt.StandardClaims
-}
 
 type LoginRequest struct {
 	Username string `json:"username"`
@@ -30,89 +20,12 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func GetJWTSecret() string {
-	return config.AppConfig.JWTSecretKey
-}
-
-func GetRefreshJWTSecret() string {
-	return config.AppConfig.JWTRefreshSecretKey
-}
-
-func generateAccessToken(user *services.User) (string, time.Time, error) {
-	expirationTime := time.Now().Add(1 * time.Hour)
-
-	return generateToken(user, expirationTime, []byte(GetJWTSecret()))
-}
-
-func setTokenCookie(name, token string, expiration time.Time, c echo.Context) {
-	cookie := new(http.Cookie)
-	cookie.Name = name
-	cookie.Value = token
-	cookie.Expires = expiration
-	cookie.Path = "/"
-	cookie.HttpOnly = true
-
-	c.SetCookie(cookie)
-}
-
-func setUserCookie(user *services.User, expiration time.Time, c echo.Context) {
-	cookie := new(http.Cookie)
-	cookie.Name = "user"
-	cookie.Value = user.Name
-	cookie.Expires = expiration
-	cookie.Path = "/"
-	c.SetCookie(cookie)
-}
-
 func JWTErrorChecker(err error, c echo.Context) error {
 	return c.String(http.StatusForbidden, "")
 }
 
-func generateToken(user *services.User, expirationTime time.Time, secret []byte) (string, time.Time, error) {
-	claims := &Claims{
-		Name: user.Name,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenString, err := token.SignedString(secret)
-	if err != nil {
-		return "", time.Now(), err
-	}
-
-	return tokenString, expirationTime, nil
-}
-
-func GenerateTokensAndSetCookies(user *services.User, c echo.Context) (string, string, error) {
-	accessToken, exp, err := generateAccessToken(user)
-	if err != nil {
-		return "", "", err
-	}
-
-	setTokenCookie(accessTokenCookieName, accessToken, exp, c)
-	setUserCookie(user, exp, c)
-
-	refreshToken, exp, err := generateRefreshToken(user)
-	if err != nil {
-		return "", "", err
-	}
-	setTokenCookie(refreshTokenCookieName, refreshToken, exp, c)
-
-	return accessToken, refreshToken, nil
-}
-
-func generateRefreshToken(user *services.User) (string, time.Time, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
-
-	return generateToken(user, expirationTime, []byte(GetRefreshJWTSecret()))
-}
-
 func RegisterLoginRoutes(e *echo.Echo) {
 	e.POST("/login", HandleLogin)
-	e.POST("/logout", HandleLogout)
 	fmt.Println("Registered authentication routes.")
 }
 
@@ -134,17 +47,13 @@ func HandleLogin(ctx echo.Context) error {
 		return ctx.String(http.StatusUnauthorized, "username or password is incorrect.")
 	}
 
-	token, refreshToken, tokenErr := GenerateTokensAndSetCookies(&userResult, ctx)
+	token, refreshToken, tokenErr := auth.GenerateTokensAndSetCookies(&userResult, ctx)
 
 	if tokenErr != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "token is incorrect")
 	}
 
 	return ctx.JSON(http.StatusOK, LoginResponse{Token: token, RefreshToken: refreshToken})
-}
-
-func HandleLogout(ctx echo.Context) error {
-	return ctx.String(http.StatusOK, "logout")
 }
 
 func TokenRefresherMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -155,14 +64,14 @@ func TokenRefresherMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		u := c.Get("user").(*jwt.Token)
-		claims := u.Claims.(*Claims)
+		claims := u.Claims.(*auth.Claims)
 
 		if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) < 15*time.Minute {
-			rc, err := c.Cookie(refreshTokenCookieName)
+			rc, err := c.Cookie(auth.GetRefreshTokenCookieName())
 
 			if err == nil && rc != nil {
 				tkn, err := jwt.ParseWithClaims(rc.Value, claims, func(token *jwt.Token) (interface{}, error) {
-					return []byte(GetRefreshJWTSecret()), nil
+					return []byte(auth.GetRefreshJWTSecret()), nil
 				})
 
 				if err != nil {
@@ -172,7 +81,7 @@ func TokenRefresherMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 				}
 
 				if tkn != nil && tkn.Valid {
-					var _, _, _ = GenerateTokensAndSetCookies(&services.User{
+					var _, _, _ = auth.GenerateTokensAndSetCookies(&services.User{
 						Name: claims.Name,
 					}, c)
 				}

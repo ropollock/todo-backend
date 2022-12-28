@@ -11,6 +11,7 @@ import (
 	"todo/config"
 	"todo/db"
 	"todo/routes"
+	"todo/services/auth"
 )
 
 func init() {
@@ -55,8 +56,8 @@ func main() {
 	routes.RegisterLoginRoutes(e)
 
 	e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
-		Claims:                  &routes.Claims{},
-		SigningKey:              []byte(routes.GetJWTSecret()),
+		Claims:                  &auth.Claims{},
+		SigningKey:              []byte(auth.GetJWTSecret()),
 		TokenLookup:             "cookie:access-token,header:Authorization",
 		ErrorHandlerWithContext: routes.JWTErrorChecker,
 		Skipper: func(c echo.Context) bool {
