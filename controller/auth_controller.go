@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
 	"todo/model"
@@ -42,7 +43,7 @@ func (controller *authController) HandleLogin(ctx echo.Context) error {
 		return ctx.String(http.StatusUnauthorized, "username or password is incorrect.")
 	}
 
-	if !service.CheckPasswordHash(req.Password, userResult.Password) {
+	if !checkPasswordHash(req.Password, userResult.Password) {
 		return ctx.String(http.StatusUnauthorized, "username or password is incorrect.")
 	}
 
@@ -89,4 +90,9 @@ func (controller *authController) TokenRefresherMiddleware(next echo.HandlerFunc
 
 		return next(c)
 	}
+}
+
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }

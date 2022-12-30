@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -118,7 +119,7 @@ func (controller *usersController) CreateUser(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, "bad request. invalid password.")
 	}
 
-	hashedPassword, hashErr := service.HashPassword(req.Password)
+	hashedPassword, hashErr := hashPassword(req.Password)
 
 	if hashErr != nil {
 		return ctx.String(http.StatusBadRequest, "bad request")
@@ -175,4 +176,9 @@ func (controller *usersController) bindUserRequest(ctx echo.Context) (*model.Use
 	}
 
 	return &req, nil
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
 }
