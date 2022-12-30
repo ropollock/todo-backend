@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"log"
 	"regexp"
 	"time"
@@ -27,8 +26,8 @@ func init() {
 }
 
 type UserServiceInterface interface {
-	CreateUser(user *model.User) (*mongo.InsertOneResult, error)
-	DeleteUser(user *model.User) (*mongo.DeleteResult, error)
+	CreateUser(user *model.User) (*model.User, error)
+	DeleteUser(user *model.User) error
 	FindUserById(id string) (model.User, error)
 	FindUserByUsername(username string) (model.User, error)
 	GetUsers() ([]model.User, error)
@@ -44,15 +43,16 @@ func UserService() *userService {
 	return &userService{}
 }
 
-func (userService *userService) CreateUser(user *model.User) (*mongo.InsertOneResult, error) {
+func (userService *userService) CreateUser(user *model.User) (*model.User, error) {
 	user.CreatedTS = time.Now()
-	result, err := db.UsersCollection.InsertOne(db.MongoContext, user)
-	return result, err
+	insertResult, err := db.UsersCollection.InsertOne(db.MongoContext, user)
+	result, _ := userService.FindUserById(insertResult.InsertedID.(primitive.ObjectID).Hex())
+	return &result, err
 }
 
-func (userService *userService) DeleteUser(user *model.User) (*mongo.DeleteResult, error) {
-	res, err := db.UsersCollection.DeleteOne(db.MongoContext, bson.M{"_id": user.ID})
-	return res, err
+func (userService *userService) DeleteUser(user *model.User) error {
+	_, err := db.UsersCollection.DeleteOne(db.MongoContext, bson.M{"_id": user.ID})
+	return err
 }
 
 func (userService *userService) FindUserById(id string) (model.User, error) {

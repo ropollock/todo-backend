@@ -128,14 +128,13 @@ func (controller *usersController) CreateUser(ctx echo.Context) error {
 	userRecord.Password = hashedPassword
 	userRecord.IsAdmin = req.IsAdmin
 
-	_, insertErr := controller.userService.CreateUser(&userRecord)
+	resultUser, insertErr := controller.userService.CreateUser(&userRecord)
 
 	if insertErr != nil {
 		return ctx.String(http.StatusInternalServerError, "Failed to create user.")
 	}
 
-	resultUser, _ := controller.userService.FindUserByUsername(userRecord.Username)
-	controller.userService.ScrubUserForAPI(&resultUser)
+	controller.userService.ScrubUserForAPI(resultUser)
 	return ctx.JSON(http.StatusOK, resultUser)
 }
 
@@ -158,13 +157,13 @@ func (controller *usersController) DeleteUser(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, "bad request")
 	}
 
-	result, deleteErr := controller.userService.DeleteUser(&userRecord)
+	deleteErr := controller.userService.DeleteUser(&userRecord)
 
 	if deleteErr != nil {
 		return ctx.String(http.StatusInternalServerError, "Failed to delete user.")
 	}
 
-	return ctx.JSON(http.StatusOK, result)
+	return ctx.JSON(http.StatusNoContent, nil)
 }
 
 func (controller *usersController) bindUserRequest(ctx echo.Context) (*model.UserRequest, error) {
