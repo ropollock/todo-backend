@@ -1,14 +1,15 @@
-package services
+package controller
 
 import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
-type Board struct {
+type BoardList struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	Name       string             `bson:"name,omitempty"`
+	Order      int32              `bson:"order,omitempty"`
 	CreatedTS  time.Time          `bson:"created_ts,omitempty"`
 	ModifiedTS time.Time          `bson:"modified_ts,omitempty"`
-	OwnerID    primitive.ObjectID `bson:"owner_id,omitempty"`
+	BoardID    primitive.ObjectID `bson:"board_id,omitempty"`
 }

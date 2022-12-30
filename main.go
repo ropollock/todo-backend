@@ -9,9 +9,10 @@ import (
 	"net/http"
 	"os"
 	"todo/config"
+	"todo/controller"
 	"todo/db"
-	"todo/routes"
-	"todo/services/auth"
+	"todo/model"
+	"todo/service"
 )
 
 func init() {
@@ -52,15 +53,24 @@ func main() {
 
 	// Routes
 	e.GET("/api/healthcheck", healthcheck)
-	routes.RegisterBoardsRoutes(e)
-	routes.RegisterUserRoutes(e)
-	routes.RegisterLoginRoutes(e)
+
+	boardsController := controller.BoardsController()
+	boardsController.RegisterBoardsRoutes(e)
+
+	userSerivce := service.UserService()
+	authService := service.AuthService(userSerivce)
+
+	usersController := controller.UsersController(userSerivce, authService)
+	usersController.RegisterUserRoutes(e)
+
+	authController := controller.AuthController(userSerivce, authService)
+	authController.RegisterLoginRoutes(e)
 
 	e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
-		Claims:                  &auth.Claims{},
-		SigningKey:              []byte(auth.GetJWTSecret()),
+		Claims:                  &model.Claims{},
+		SigningKey:              []byte(authService.GetJWTSecret()),
 		TokenLookup:             "cookie:access-token,header:Authorization",
-		ErrorHandlerWithContext: routes.JWTErrorChecker,
+		ErrorHandlerWithContext: authController.JWTErrorChecker,
 		Skipper: func(c echo.Context) bool {
 			if c.Request().URL.Path == "/login" {
 				return true
@@ -69,7 +79,7 @@ func main() {
 		},
 	}))
 
-	e.Use(routes.TokenRefresherMiddleware)
+	e.Use(authController.TokenRefresherMiddleware)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))

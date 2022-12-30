@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"time"
 	"todo/db"
+	"todo/model"
 	"unicode"
 )
 
@@ -21,40 +22,47 @@ var (
 	USERNAME_REGEX *regexp.Regexp
 )
 
-type User struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	Name        string             `bson:"name,omitempty" json:"name,omitempty"`
-	Username    string             `bson:"username,omitempty" json:"username,omitempty"`
-	Password    string             `bson:"password,omitempty" json:"-"`
-	Email       string             `bson:"email,omitempty" json:"email,omitempty"`
-	CreatedTS   time.Time          `bson:"created_ts,omitempty" json:"created_ts"`
-	LastLoginTS time.Time          `bson:"last_login_ts,omitempty" json:"last_login_ts"`
-	IsAdmin     bool               `bson:"is_admin" json:"is_admin,omitempty"`
-}
-
 func init() {
 	USERNAME_REGEX, _ = regexp.Compile(USERNAME_REGEX_STRING)
 }
 
-func CreateUser(user *User) (*mongo.InsertOneResult, error) {
+type UserServiceInterface interface {
+	CreateUser(user *model.User) (*mongo.InsertOneResult, error)
+	DeleteUser(user *model.User) (*mongo.DeleteResult, error)
+	FindUserById(id string) (model.User, error)
+	FindUserByUsername(username string) (model.User, error)
+	GetUsers() ([]model.User, error)
+	ValidatePassword(s string) bool
+	ValidateUsername(s string) bool
+	ScrubUserForAPI(u *model.User)
+}
+
+type userService struct {
+}
+
+func UserService() *userService {
+	return &userService{}
+}
+
+func (userService *userService) CreateUser(user *model.User) (*mongo.InsertOneResult, error) {
 	user.CreatedTS = time.Now()
 	result, err := db.UsersCollection.InsertOne(db.MongoContext, user)
 	return result, err
 }
 
-func DeleteUser(user *User) (*mongo.DeleteResult, error) {
+func (userService *userService) DeleteUser(user *model.User) (*mongo.DeleteResult, error) {
 	res, err := db.UsersCollection.DeleteOne(db.MongoContext, bson.M{"_id": user.ID})
 	return res, err
 }
 
-func FindUserById(id string) (User, error) {
+func (userService *userService) FindUserById(id string) (model.User, error) {
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		log.Println("Invalid id")
 	}
 
 	result := db.UsersCollection.FindOne(context.Background(), bson.M{"_id": objectId})
-	resultUser := User{}
+	resultUser := model.User{}
 	err = result.Decode(&resultUser)
 	if err != nil {
 		fmt.Println(err)
@@ -63,9 +71,9 @@ func FindUserById(id string) (User, error) {
 	return resultUser, nil
 }
 
-func FindUserByUsername(username string) (User, error) {
+func (userService *userService) FindUserByUsername(username string) (model.User, error) {
 	result := db.UsersCollection.FindOne(context.Background(), bson.M{"username": username})
-	resultUser := User{}
+	resultUser := model.User{}
 	err := result.Decode(&resultUser)
 	if err != nil {
 		fmt.Println(err)
@@ -74,8 +82,8 @@ func FindUserByUsername(username string) (User, error) {
 	return resultUser, nil
 }
 
-func GetUsers() ([]User, error) {
-	var results []User
+func (userService *userService) GetUsers() ([]model.User, error) {
+	var results []model.User
 	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
 	cursor, err := db.UsersCollection.Find(context.Background(), bson.D{})
 	if err != nil {
@@ -92,7 +100,7 @@ func GetUsers() ([]User, error) {
 	return results, nil
 }
 
-func ValidatePassword(s string) bool {
+func (userService *userService) ValidatePassword(s string) bool {
 	if len(s) < 8 {
 		return false
 	}
@@ -115,7 +123,7 @@ func ValidatePassword(s string) bool {
 	return hasNumber && hasUpperCase && hasLowercase && hasSpecial
 }
 
-func ValidateUsername(s string) bool {
+func (userService *userService) ValidateUsername(s string) bool {
 	var firstLetter = []rune(s)
 	if (len(s) > 40 || len(s) < 4) || !USERNAME_REGEX.MatchString(s) || !unicode.IsLetter(firstLetter[0]) {
 		return false
@@ -123,6 +131,6 @@ func ValidateUsername(s string) bool {
 	return true
 }
 
-func ScrubUserForAPI(u *User) {
+func (userService *userService) ScrubUserForAPI(u *model.User) {
 	u.Password = ""
 }
