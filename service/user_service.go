@@ -1,14 +1,9 @@
 package service
 
 import (
-	"context"
-	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"log"
 	"regexp"
 	"time"
-	"todo/db"
+	"todo/dao"
 	"todo/model"
 	"unicode"
 )
@@ -37,67 +32,32 @@ type UserServiceInterface interface {
 }
 
 type userService struct {
+	userDao dao.UserDaoInterface
 }
 
-func UserService() *userService {
-	return &userService{}
+func UserService(userDao dao.UserDaoInterface) *userService {
+	return &userService{userDao}
 }
 
 func (userService *userService) CreateUser(user *model.User) (*model.User, error) {
 	user.CreatedTS = time.Now()
-	insertResult, err := db.UsersCollection.InsertOne(db.MongoContext, user)
-	result, _ := userService.FindUserById(insertResult.InsertedID.(primitive.ObjectID).Hex())
-	return &result, err
+	return userService.userDao.CreateUser(user)
 }
 
 func (userService *userService) DeleteUser(user *model.User) error {
-	_, err := db.UsersCollection.DeleteOne(db.MongoContext, bson.M{"_id": user.ID})
-	return err
+	return userService.userDao.DeleteUser(user)
 }
 
 func (userService *userService) FindUserById(id string) (model.User, error) {
-	objectId, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		log.Println("Invalid id")
-	}
-
-	result := db.UsersCollection.FindOne(context.Background(), bson.M{"_id": objectId})
-	resultUser := model.User{}
-	err = result.Decode(&resultUser)
-	if err != nil {
-		fmt.Println(err)
-		return resultUser, fmt.Errorf("an error occurred while decoding record : %v", err)
-	}
-	return resultUser, nil
+	return userService.userDao.FindUserById(id)
 }
 
 func (userService *userService) FindUserByUsername(username string) (model.User, error) {
-	result := db.UsersCollection.FindOne(context.Background(), bson.M{"username": username})
-	resultUser := model.User{}
-	err := result.Decode(&resultUser)
-	if err != nil {
-		fmt.Println(err)
-		return resultUser, fmt.Errorf("an error occurred while decoding record : %v", err)
-	}
-	return resultUser, nil
+	return userService.userDao.FindUserByUsername(username)
 }
 
 func (userService *userService) GetUsers() ([]model.User, error) {
-	var results []model.User
-	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
-	cursor, err := db.UsersCollection.Find(context.Background(), bson.D{})
-	if err != nil {
-		fmt.Println("Finding all users ERROR:", err)
-		defer cursor.Close(ctx)
-	}
-
-	err = cursor.All(ctx, &results)
-	if err != nil {
-		defer cursor.Close(ctx)
-		return results, err
-	}
-
-	return results, nil
+	return userService.userDao.GetUsers()
 }
 
 func (userService *userService) ValidatePassword(s string) bool {

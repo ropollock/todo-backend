@@ -10,25 +10,26 @@ import (
 	"os"
 	"todo/config"
 	"todo/controller"
-	"todo/db"
+	"todo/dao"
+	"todo/data"
 	"todo/model"
 	"todo/service"
 )
 
-func init() {
+// go run main.go
+func main() {
 	fmt.Println("Loading config.")
 
 	conf, err := config.LoadConfig(".")
 	if err != nil {
 		log.Fatal("Could not load environment variables config.", err)
 	}
+
 	config.AppConfig = &conf
 
-	db.Connect(conf.DBUri)
-}
+	databaseProvider := data.MongoDBProvider()
+	databaseProvider.Connect(conf.DBUri)
 
-// go run main.go
-func main() {
 	e := echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowCredentials: true,
@@ -57,7 +58,8 @@ func main() {
 	boardsController := controller.BoardsController()
 	boardsController.RegisterBoardsRoutes(e)
 
-	userSerivce := service.UserService()
+	userDao := dao.UserDao(databaseProvider)
+	userSerivce := service.UserService(userDao)
 	authService := service.AuthService(userSerivce)
 
 	usersController := controller.UsersController(userSerivce, authService)

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/mail"
 	"strings"
-	"todo/db"
+	"todo/data"
 	"todo/model"
 	"todo/service"
 )
@@ -50,7 +50,7 @@ func (controller *usersController) FindUserById(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, "bad request")
 	}
 
-	reqObjectID, err := db.StringToObjectID(req.ID)
+	reqObjectID, err := data.StringToObjectID(req.ID)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, "bad request")
 	}
@@ -151,7 +151,7 @@ func (controller *usersController) DeleteUser(ctx echo.Context) error {
 	}
 
 	var userRecord model.User
-	userRecord.ID, err = db.StringToObjectID(req.ID)
+	userRecord.ID, err = data.StringToObjectID(req.ID)
 
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, "bad request")
