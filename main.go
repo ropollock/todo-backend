@@ -55,12 +55,14 @@ func main() {
 	// Routes
 	e.GET("/api/healthcheck", healthcheck)
 
-	boardsController := controller.BoardsController()
-	boardsController.RegisterBoardsRoutes(e)
-
 	userDao := dao.UserDao(databaseProvider)
 	userSerivce := service.UserService(userDao)
 	authService := service.AuthService(userSerivce)
+
+	boardDao := dao.BoardDao(databaseProvider)
+	boardsService := service.BoardService(boardDao)
+	boardsController := controller.BoardsController(boardsService, authService)
+	boardsController.RegisterBoardsRoutes(e)
 
 	usersController := controller.UsersController(userSerivce, authService)
 	usersController.RegisterUserRoutes(e)
