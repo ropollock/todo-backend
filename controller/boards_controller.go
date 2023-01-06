@@ -47,19 +47,18 @@ func (controller *boardsController) FindBoardsById(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, "bad request")
 	}
 
-	// validate board is owned by current user or is admin
+	boardResult, err := controller.boardService.FindBoardById(req.ID)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, "board not found.")
+	}
+
 	userResult, err := controller.authService.GetCurrentUser(ctx)
-	if err != nil || (req.ID != userResult.ID.Hex() && !userResult.IsAdmin) {
+
+	if err != nil || (boardResult.OwnerID.Hex() != userResult.ID.Hex() && !userResult.IsAdmin) {
 		return ctx.String(http.StatusUnauthorized, "user is not authorized.")
 	}
 
-	result, err := controller.boardService.FindBoardById(req.ID)
-
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
-
-	return ctx.JSON(http.StatusOK, result)
+	return ctx.JSON(http.StatusOK, boardResult)
 }
 
 func (controller *boardsController) CreateBoard(ctx echo.Context) error {
@@ -74,10 +73,12 @@ func (controller *boardsController) CreateBoard(ctx echo.Context) error {
 		return ctx.String(http.StatusUnauthorized, "user is not authorized.")
 	}
 
-	// TODO validate board name does not already exist
-
 	var boardRecord model.Board
-	boardRecord.Name = req.Name
+	if len(boardRecord.Name) > 100 {
+		boardRecord.Name = req.Name[0:100]
+	} else {
+		boardRecord.Name = req.Name
+	}
 	boardRecord.OwnerID = userResult.ID
 
 	resultBoard, insertErr := controller.boardService.CreateBoard(&boardRecord)
@@ -110,7 +111,11 @@ func (controller *boardsController) UpdateBoard(ctx echo.Context) error {
 		return ctx.String(http.StatusUnauthorized, "user is not authorized.")
 	}
 
-	boardRecord.Name = req.Name
+	if len(boardRecord.Name) > 100 {
+		boardRecord.Name = req.Name[0:100]
+	} else {
+		boardRecord.Name = req.Name
+	}
 
 	resultBoard, updateErr := controller.boardService.UpdateBoard(&boardRecord)
 
@@ -128,8 +133,14 @@ func (controller *boardsController) DeleteBoard(ctx echo.Context) error {
 		return ctx.String(http.StatusBadRequest, "bad request")
 	}
 
+	boardResult, err := controller.boardService.FindBoardById(req.ID)
+	if err != nil {
+		return ctx.String(http.StatusBadRequest, "board not found.")
+	}
+
 	userResult, err := controller.authService.GetCurrentUser(ctx)
-	if err != nil || (req.ID != userResult.ID.Hex() && !userResult.IsAdmin) {
+
+	if err != nil || (boardResult.OwnerID.Hex() != userResult.ID.Hex() && !userResult.IsAdmin) {
 		return ctx.String(http.StatusUnauthorized, "user is not authorized.")
 	}
 

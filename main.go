@@ -70,6 +70,11 @@ func main() {
 	authController := controller.AuthController(userSerivce, authService)
 	authController.RegisterLoginRoutes(e)
 
+	listDao := dao.ListDao(databaseProvider)
+	listsService := service.ListService(listDao)
+	listsController := controller.ListsController(listsService, authService, boardsService)
+	listsController.RegisterListsRoutes(e)
+
 	e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
 		Claims:                  &model.Claims{},
 		SigningKey:              []byte(authService.GetJWTSecret()),

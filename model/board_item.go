@@ -6,9 +6,9 @@ import (
 )
 
 type Board struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
-	Name       string             `bson:"name,omitempty"`
-	CreatedTS  time.Time          `bson:"created_ts,omitempty"`
-	ModifiedTS time.Time          `bson:"modified_ts,omitempty"`
-	OwnerID    primitive.ObjectID `bson:"owner_id,omitempty"`
+	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name       string             `bson:"name,omitempty" json:"name"`
+	CreatedTS  time.Time          `bson:"created_ts,omitempty" json:"created_ts"`
+	ModifiedTS time.Time          `bson:"modified_ts,omitempty" json:"modified_ts"`
+	OwnerID    primitive.ObjectID `bson:"owner_id,omitempty" json:"owner_id"`
 }
