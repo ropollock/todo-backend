@@ -16,8 +16,8 @@ type boardDao struct {
 }
 
 type BoardDaoInterface interface {
-	CreateBoard(user *model.Board) (*model.Board, error)
-	DeleteBoard(user *model.Board) error
+	CreateBoard(board *model.Board) (*model.Board, error)
+	DeleteBoard(board *model.Board) error
 	UpdateBoard(board *model.Board) (*model.Board, error)
 	FindBoardById(id string) (model.Board, error)
 	FindBoardByUserId(username string) (model.Board, error)

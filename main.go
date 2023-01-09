@@ -75,6 +75,11 @@ func main() {
 	listsController := controller.ListsController(listsService, authService, boardsService)
 	listsController.RegisterListsRoutes(e)
 
+	taskDao := dao.TaskDao(databaseProvider)
+	tasksService := service.TaskService(taskDao)
+	tasksController := controller.TasksController(tasksService, authService, boardsService, listsService)
+	tasksController.RegisterTasksRoutes(e)
+
 	e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
 		Claims:                  &model.Claims{},
 		SigningKey:              []byte(authService.GetJWTSecret()),

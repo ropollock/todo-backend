@@ -16,6 +16,7 @@ type mongoDBProvider struct {
 	usersCollection  *mongo.Collection
 	boardsCollection *mongo.Collection
 	listsCollection  *mongo.Collection
+	tasksCollection  *mongo.Collection
 }
 
 type MongoDBProviderInterface interface {
@@ -25,6 +26,7 @@ type MongoDBProviderInterface interface {
 	GetUsersCollection() *mongo.Collection
 	GetBoardsCollection() *mongo.Collection
 	GetListsCollection() *mongo.Collection
+	GetTasksCollection() *mongo.Collection
 	Connect(dbURI string)
 }
 
@@ -56,6 +58,10 @@ func (provider *mongoDBProvider) GetListsCollection() *mongo.Collection {
 	return provider.listsCollection
 }
 
+func (provider *mongoDBProvider) GetTasksCollection() *mongo.Collection {
+	return provider.tasksCollection
+}
+
 func (provider *mongoDBProvider) Connect(dbURI string) {
 	provider.mongoContext = context.TODO()
 	mongoconn := options.Client().ApplyURI(dbURI)
@@ -74,6 +80,7 @@ func (provider *mongoDBProvider) Connect(dbURI string) {
 	provider.usersCollection = provider.todoDB.Collection("users")
 	provider.boardsCollection = provider.todoDB.Collection("boards")
 	provider.listsCollection = provider.todoDB.Collection("lists")
+	provider.tasksCollection = provider.todoDB.Collection("tasks")
 
 	fmt.Println("MongoDB successfully connected.")
 }
