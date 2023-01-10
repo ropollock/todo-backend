@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"time"
 	"todo/dao"
 	"todo/model"
@@ -15,11 +16,12 @@ type ListServiceInterface interface {
 }
 
 type listService struct {
-	listDao dao.ListDaoInterface
+	listDao     dao.ListDaoInterface
+	taskService TaskServiceInterface
 }
 
-func ListService(listDao dao.ListDaoInterface) *listService {
-	return &listService{listDao}
+func ListService(listDao dao.ListDaoInterface, taskService TaskServiceInterface) *listService {
+	return &listService{listDao, taskService}
 }
 
 func (srv *listService) CreateList(boardList *model.BoardList) (*model.BoardList, error) {
@@ -33,7 +35,20 @@ func (srv *listService) UpdateList(boardList *model.BoardList) (*model.BoardList
 }
 
 func (srv *listService) DeleteList(boardList *model.BoardList) error {
-	return srv.listDao.DeleteList(boardList)
+	listErr := srv.listDao.DeleteList(boardList)
+	if listErr == nil {
+		tasks, err := srv.taskService.GetTasks(boardList.ID.Hex())
+		if err == nil {
+			for _, task := range tasks {
+				taskErr := srv.taskService.DeleteTask(&task)
+				if taskErr != nil {
+					fmt.Printf("failed to delete task. %s", listErr)
+				}
+			}
+		}
+	}
+
+	return listErr
 }
 
 func (srv *listService) FindListById(id string) (model.BoardList, error) {

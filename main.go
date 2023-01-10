@@ -56,27 +56,27 @@ func main() {
 	e.GET("/api/healthcheck", healthcheck)
 
 	userDao := dao.UserDao(databaseProvider)
-	userSerivce := service.UserService(userDao)
-	authService := service.AuthService(userSerivce)
+	listDao := dao.ListDao(databaseProvider)
+	taskDao := dao.TaskDao(databaseProvider)
+	userService := service.UserService(userDao)
+	authService := service.AuthService(userService)
+	tasksService := service.TaskService(taskDao)
+	listsService := service.ListService(listDao, tasksService)
 
 	boardDao := dao.BoardDao(databaseProvider)
-	boardsService := service.BoardService(boardDao)
+	boardsService := service.BoardService(boardDao, listsService)
 	boardsController := controller.BoardsController(boardsService, authService)
 	boardsController.RegisterBoardsRoutes(e)
 
-	usersController := controller.UsersController(userSerivce, authService)
+	usersController := controller.UsersController(userService, authService)
 	usersController.RegisterUserRoutes(e)
 
-	authController := controller.AuthController(userSerivce, authService)
+	authController := controller.AuthController(userService, authService)
 	authController.RegisterLoginRoutes(e)
 
-	listDao := dao.ListDao(databaseProvider)
-	listsService := service.ListService(listDao)
 	listsController := controller.ListsController(listsService, authService, boardsService)
 	listsController.RegisterListsRoutes(e)
 
-	taskDao := dao.TaskDao(databaseProvider)
-	tasksService := service.TaskService(taskDao)
 	tasksController := controller.TasksController(tasksService, authService, boardsService, listsService)
 	tasksController.RegisterTasksRoutes(e)
 
